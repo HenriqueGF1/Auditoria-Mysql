@@ -1,0 +1,87 @@
+
+-- Exercicio 
+-- Aluno: Henrique Gonçalves Ferreira
+-- Matricula: 201910499
+-- Curso: TADS
+
+-- Questão 3.1 Criar a tabela para armazenar as informações
+
+use rh;
+
+create table if not exists AUDITORIA(
+ID_AUDITORIA int auto_increment,
+DT_EVENTO datetime,
+ST_USUARIO varchar(60),
+ST_TABELA varchar(60),
+ST_OPERACAO	varchar(10),
+ST_VLR_ANTIGO varchar(1000),
+ST_VLR_NOVO	varchar(1000),
+primary key (ID_AUDITORIA)
+)engine = innodb;
+
+
+-- 3.2.	Criar uma Trigger para armazenar os dados inseridos na tabela
+ 
+Delimiter $$
+create trigger tr_inseridos 
+after insert on Empregados
+for each row
+begin
+declare valores_inseridos varchar(1000);
+set valores_inseridos = concat(new.Empregados_ID,"/",new.Primeiro_Nome,"/",new.Ultimo_Nome,"/",new.EMail,"/",new.Telefone,"/",new.Cargo_ID,"/",new.Salario,"/",new.Depto_ID,"/",new.Gerente_ID);
+	insert into auditoria (DT_EVENTO,ST_USUARIO,ST_TABELA,ST_OPERACAO,ST_VLR_ANTIGO,ST_VLR_NOVO)
+	values (now(),user(),"Empregados","Insert",null,valores_inseridos);
+end $$
+Delimiter ;
+
+-- 3.3.	Criar uma Trigger para armazenar os dados alterados na tabela 
+
+Delimiter $$
+create trigger tr_atualizados 
+after update on Empregados
+for each row
+begin
+declare valores_alterados varchar(1000);
+declare valores_antigos varchar(1000);
+set valores_alterados = concat(new.Empregados_ID,"/",new.Primeiro_Nome,"/",new.Ultimo_Nome,"/",new.EMail,"/",new.Telefone,"/",new.Cargo_ID,"/",new.Salario,"/",new.Depto_ID,"/",new.Gerente_ID);
+set valores_antigos = concat(old.Empregados_ID,"/",old.Primeiro_Nome,"/",old.Ultimo_Nome,"/",old.EMail,"/",old.Telefone,"/",old.Cargo_ID,"/",old.Salario,"/",old.Depto_ID,"/",old.Gerente_ID);
+    insert into auditoria (DT_EVENTO,ST_USUARIO,ST_TABELA,ST_OPERACAO,ST_VLR_ANTIGO,ST_VLR_NOVO)
+	values (now(),user(),"Empregados","Update",valores_antigos,valores_alterados);
+end $$
+Delimiter ;
+
+-- 3.4.	Criar uma Trigger para armazenar os dados excluídos da tabela 
+
+Delimiter $$
+create trigger tr_deletados 
+after delete on Empregados
+for each row
+begin
+declare valores_deletados varchar(1000);
+set valores_deletados = concat(old.Empregados_ID,"/",old.Primeiro_Nome,"/",old.Ultimo_Nome,"/",old.EMail,"/",old.Telefone,"/",old.Cargo_ID,"/",old.Salario,"/",old.Depto_ID,"/",old.Gerente_ID);
+    insert into auditoria (DT_EVENTO,ST_USUARIO,ST_TABELA,ST_OPERACAO,ST_VLR_ANTIGO,ST_VLR_NOVO)
+	values (now(),user(),"Empregados","Delete",valores_deletados,null);
+end $$
+Delimiter ;
+
+-- 3.5.	Criar um novo usuário no banco de dados para testar a trigger 
+
+create user 'operador'@'127.0.0.1' identified by 'operador';
+grant select, insert, update, delete on EMPREGADOS to 'operador'@'127.0.0.1';
+grant select, insert, update, delete on auditoria to 'operador'@'127.0.0.1';
+flush privileges;
+
+use rh;
+
+insert into EMPREGADOS (Empregados_ID, Primeiro_Nome, Ultimo_Nome, EMail, Telefone, Cargo_ID, Salario, Gerente_ID, Depto_ID) values
+(207,'Carlos','Silva','Email','123456789',5,5.00,205,110);
+
+insert into EMPREGADOS (Empregados_ID, Primeiro_Nome, Ultimo_Nome, EMail, Telefone, Cargo_ID, Salario, Gerente_ID, Depto_ID) values
+(208,'Henrique','Ferreira','Email','97654321',1,8888.00,205,110);
+
+update EMPREGADOS set Salario = 8.500 where Empregados_ID = 207;
+
+delete from EMPREGADOS where Empregados_ID = 207;
+
+select * from auditoria;
+
